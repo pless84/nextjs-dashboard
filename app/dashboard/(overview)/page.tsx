@@ -1,14 +1,19 @@
-import { lusitana } from "@/app/ui/fonts";
-import { Card } from "@/app/ui/dashboard/cards";
-import RevenueChart from "@/app/ui/dashboard/revenue-chart";
-import LatestInvoices from "@/app/ui/dashboard/latest-invoices";
-import { fetchCardData } from "@/app/lib/data";
+import type { Metadata } from "next";
 import { Suspense } from "react";
+import { fetchCardData } from "@/app/lib/data";
+import { Card } from "@/app/ui/dashboard/cards";
+import LatestInvoices from "@/app/ui/dashboard/latest-invoices";
+import RevenueChart from "@/app/ui/dashboard/revenue-chart";
+import { lusitana } from "@/app/ui/fonts";
 import {
+	CardsSkeleton,
 	LatestInvoicesSkeleton,
 	RevenueChartSkeleton,
-	CardsSkeleton,
 } from "@/app/ui/skeletons";
+
+export const metadata: Metadata = {
+	title: "Overview",
+};
 
 export default async function Page() {
 	const {

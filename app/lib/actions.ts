@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { AuthError } from "next-auth";
 import postgres from "postgres";
 import { z } from "zod";
+import { signIn } from "@/auth";
 
 if (!process.env.POSTGRES_URL) {
 	throw new Error("POSTGRES_URL environment variable is not defined");
@@ -32,7 +34,7 @@ export type State = {
 		status?: string[];
 	};
 	message?: string | null;
-}
+};
 
 export async function createInvoice(prevState: State, formData: FormData) {
 	// Validate form usin Zod
@@ -44,9 +46,9 @@ export async function createInvoice(prevState: State, formData: FormData) {
 
 	// If form validation fails, return errors early. Otherwise continue.
 	if (!validatedFields.success) {
-		return { 
-			errors: validatedFields.error.flatten().fieldErrors, 
-			message: "Missing fields. Failed to create invoice." 
+		return {
+			errors: validatedFields.error.flatten().fieldErrors,
+			message: "Missing fields. Failed to create invoice.",
 		};
 	}
 
@@ -71,38 +73,38 @@ export async function createInvoice(prevState: State, formData: FormData) {
 }
 
 export async function updateInvoice(
-  id: string,
-  prevState: State,
-  formData: FormData,
+	id: string,
+	prevState: State,
+	formData: FormData,
 ) {
-  const validatedFields = UpdateInvoice.safeParse({
-    customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
-    status: formData.get('status'),
-  });
- 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Update Invoice.',
-    };
-  }
- 
-  const { customerId, amount, status } = validatedFields.data;
-  const amountInCents = amount * 100;
- 
-  try {
-    await sql`
+	const validatedFields = UpdateInvoice.safeParse({
+		customerId: formData.get("customerId"),
+		amount: formData.get("amount"),
+		status: formData.get("status"),
+	});
+
+	if (!validatedFields.success) {
+		return {
+			errors: validatedFields.error.flatten().fieldErrors,
+			message: "Missing Fields. Failed to Update Invoice.",
+		};
+	}
+
+	const { customerId, amount, status } = validatedFields.data;
+	const amountInCents = amount * 100;
+
+	try {
+		await sql`
       UPDATE invoices
       SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
       WHERE id = ${id}
     `;
-  } catch (error) {
-    return { message: 'Database Error: Failed to Update Invoice.' };
-  }
- 
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
+	} catch (error) {
+		return { message: "Database Error: Failed to Update Invoice." };
+	}
+
+	revalidatePath("/dashboard/invoices");
+	redirect("/dashboard/invoices");
 }
 
 export async function deleteInvoice(id: string) {
@@ -116,4 +118,23 @@ export async function deleteInvoice(id: string) {
 	}
 
 	revalidatePath("/dashboard/invoices");
+}
+
+export async function authenticate(
+	prevState: string | undefined,
+	formData: FormData,
+) {
+	try {
+		await signIn("credentials", formData);
+	} catch (error) {
+		if (error instanceof AuthError) {
+			switch (error.type) {
+				case "CredentialsSignin":
+					return "Invalid credentials.";
+				default:
+					return "An unexpected error occurred.";
+			}
+		}
+		throw error;
+	}
 }
